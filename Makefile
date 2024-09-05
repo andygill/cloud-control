@@ -148,3 +148,17 @@ nvidia-smi-fix::
 	make stop-instance
 	make start-instance
 
+#############################################################################
+# Ollama 
+#############################################################################
+
+install-ollama::
+	${REMOTE} "mkdir -p ollama"
+	${REMOTE} "curl https://ollama.ai/install.sh > ollama/install.sh"
+	${REMOTE} "sh ollama/install.sh"
+	${REMOTE} -t -t "ollama pull mistral"
+	${REMOTE} -t -t "ollama run mistral Say hi and nothing else"
+
+start-ollama:
+	gcloud compute ssh ${USER}@${INSTANCE} --command "ollama list"
+

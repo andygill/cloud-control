@@ -1,2 +1,4 @@
-# cloud-control
-Makefile for my google cloud instances
+# Cloud Control
+
+Makefile for my Google cloud instances
+

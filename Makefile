@@ -87,8 +87,6 @@ SCOPES = \
 	service.management.readonly \
 	servicecontrol \
 	trace.append
-# The resource 'projects/ml-images/global/images/c0-deeplearning-common-gpu-v20240605-debian-11-py310' is deprecated. 
-# A suggested replacement is 'projects/ml-images/global/images/c0-deeplearning-common-gpu-v20240613-debian-11-py310'.
 DISK_OPTIONS = \
 	auto-delete=yes \
 	boot=yes \

@@ -131,6 +131,9 @@ setup-instance:: # set up instance after creation
 	${REMOTE}
 # now forward the ports
 	make forward-ports
+	scp dot-files/.tmux.conf @${INSTANCE}:
+	${REMOTE} "mkdir scripts"
+	scp scripts/*py @${INSTANCE}:scripts/
 
 
 ####################################################################################

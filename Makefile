@@ -219,3 +219,43 @@ load-ollama-model:
 
 
 #############################################################################
+# Fooocus
+#############################################################################
+
+FOOOCUS=Fooocus
+CONNECTED_DIRS = checkpoints loras controlnet
+
+install-fooocus::
+	${REMOTE} "git clone https://github.com/lllyasviel/Fooocus.git"
+	${REMOTE} "cd ${FOOOCUS}; ${REMOTE_PYTHON} -m venv venv"
+	${REMOTE} "cd ${FOOOCUS}; PYTHONPATH=. ./venv/bin/pip install -r requirements_versions.txt"
+
+# This installs fooocus weights first time around
+run-fooocus::
+	${REMOTE} -t "cd ${FOOOCUS}; tmux new-session -s fooocus '. ./venv/bin/activate ; python entry_with_update.py ; bash'"
+
+attach-fooocus::
+	${REMOTE} -t tmux attach -t fooocus
+
+capture-fooocus::
+	${REMOTE} tmux capture-pane -t fooocus -p
+
+kill-fooocus::
+	${REMOTE} tmux kill-session -t fooocus
+
+connect-fooocus:: # connect the storage command
+	@for variant in $(CONNECTED_DIRS); do \
+		${REMOTE} "echo '${GOOGLE_STORAGE}/fooocus/$${variant}' | tee './${FOOOCUS}/models/$${variant}/.gstorage'"; \
+	done
+
+restore-fooocus::
+	${REMOTE} "cd ${FOOOCUS} ; gsutil -m rsync -c ${GOOGLE_STORAGE}/fooocus/checkpoints models/checkpoints"
+	${REMOTE} "cd ${FOOOCUS} ; gsutil -m rsync -c ${GOOGLE_STORAGE}/fooocus/loras models/loras"
+	${REMOTE} "cd ${FOOOCUS} ; gsutil -m rsync -c ${GOOGLE_STORAGE}/fooocus/loras models/controlnet"
+
+preserve-fooocus::
+	${REMOTE} "cd ${FOOOCUS}/models/checkpoints ; gsutil rsync -c . ${GOOGLE_STORAGE}/fooocus/checkpoints"
+	${REMOTE} "cd ${FOOOCUS}/models/loras       ; gsutil rsync -c . ${GOOGLE_STORAGE}/fooocus/loras"
+	${REMOTE} "cd ${FOOOCUS}/models/controlnet  ; gsutil rsync -c . ${GOOGLE_STORAGE}/fooocus/controlnet"
+
+

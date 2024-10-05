@@ -259,3 +259,28 @@ preserve-fooocus::
 	${REMOTE} "cd ${FOOOCUS}/models/controlnet  ; gsutil rsync -c . ${GOOGLE_STORAGE}/fooocus/controlnet"
 
 
+#############################################################################                                                           
+# Kohya                                                                                                                                 
+#############################################################################                                                           
+
+KOHYA=kohya_ss
+
+install-kohya::
+	${REMOTE} "git clone https://github.com/bmaltais/kohya_ss.git"
+	${REMOTE} '${SET_CONDA_BIN} ; cd ${KOHYA}; chmod +x ./setup.sh ; ./setup.sh'
+	${REMOTE} -t '${SET_CONDA_BIN} ; cd ${KOHYA}; . ./venv/bin/activate ; accelerate config default'
+
+run-kohya::
+	${REMOTE} -t "cd ${KOHYA}; tmux new-session -s kohya 'chmod +x ./gui.sh ; ./gui.sh'"
+
+attach-kohya::
+	${REMOTE} -t tmux attach -t kohya
+
+capture-kohya::
+	${REMOTE} tmux capture-pane -t kohya -p
+
+kill-kohya::
+	${REMOTE} tmux kill-session -t kohya
+
+upload-bucket::
+	scp bucket @${INSTANCE}:bucket

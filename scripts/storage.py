@@ -1,4 +1,5 @@
 # Reads .gstorage file, which contains a gstorage "directory", and figure out the differences.
+# Example of .gstorage is gs://xxx-yyy/dirname/dirname
 
 import os
 import subprocess

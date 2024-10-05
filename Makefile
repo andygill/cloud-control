@@ -1,16 +1,22 @@
 export COMPUTE=gpu
 export ID=1
 export INSTANCE=instance-${ID}-${COMPUTE}
-export BOOT_DISK_SIZE=150
+export BOOT_DISK_SIZE=200
 export BOOT_DISK_TYPE=pd-balanced
 
 include .env 
 # (example of .env file)
 #	export ACCOUNT=abc@developer.gserviceaccount.co
 #   export PROJECT=happy-camper
-#	export ZONE=us-central1-f
 #	export FORWARD_PORTS = 1234
 #	export GOOGLE_STORAGE=gs://xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+#	export REMOTE_USER=andy
+
+include .zone
+# (example of .zone file)
+#	export ZONE=us-central1-a
+
+export REGION=$(shell echo $(ZONE) | cut -d'-' -f1,2)
 
 # Makefile hacking
 empty :=
@@ -18,6 +24,10 @@ space := $(empty) $(empty)
 comma := ,
 
 REMOTE=ssh ${INSTANCE}
+
+CONDA_BIN=/opt/conda/bin
+REMOTE_PYTHON=${CONDA_BIN}/python3.10
+SET_CONDA_BIN=export PATH="${CONDA_BIN}:$${PATH}"
 
 .PHONY: help 
 .PHONY: set-zone
@@ -42,8 +52,29 @@ help:: # show help
 	@echo
 	@grep -E "^[[:alnum:]_-]+:" Makefile
 
+list-instances::
+	gcloud compute instances list
+
+find-zone::
+	@echo "Trying to find a working g2-standard-16 in US ZONE"
+	@ZONES=$$(gcloud compute machine-types list | grep us- | grep g2-standard-16 | awk '{print $$2}' | sort -u | tr '\n' ' '); \
+	ZONE_COUNT=$$(echo $$ZONES | wc -w); \
+	echo Found $$ZONE_COUNT candidiate ZONES in US; \
+	for zone in $$ZONES; do \
+		echo "Trying ZONE=$$zone..."; \
+		if $(MAKE) create-instance ZONE=$$zone; then \
+			echo "ZONE=$$zone worked!"; \
+			echo "export ZONE=$$zone" > .zone; \
+			$(MAKE) set-zone; \
+			echo "NEXT: make setup-instance"; \
+			exit 0; \
+		fi; \
+	done; \
+	echo "No ZONE value worked."; \
+	exit 1
 
 set-zone:: # set zone
+	gcloud config set compute/region ${REGION}
 	gcloud config set compute/zone ${ZONE}
 
 ifeq (${COMPUTE}, gpu)
@@ -69,12 +100,12 @@ DISK_OPTIONS = \
 endif
 
 
-create-instance: # create a remote instance
+create-instance:: # create a remote instance
 ifeq (${COMPUTE}, gpu)
 	gcloud compute instances create ${INSTANCE} \
 		--project=${PROJECT} \
 		--zone=${ZONE} \
-		--machine-type=g2-standard-12 \
+		--machine-type=g2-standard-16 \
 		--network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
 		--maintenance-policy=TERMINATE \
 		--provisioning-model=STANDARD \
@@ -90,9 +121,16 @@ ifeq (${COMPUTE}, gpu)
 else
 	@echo "not supported (yet)""
 endif
+
+
+setup-instance:: # set up instance after creation
 	make update-config
+	sleep 10
 # first time, just ssh in to see if it works
+# remember to say yes to nvidia
 	${REMOTE}
+# now forward the ports
+	make forward-ports
 
 
 ####################################################################################
@@ -127,6 +165,9 @@ stop-instance:: kill-forward-ports
 start-instance::
 	gcloud compute instances start ${INSTANCE} --quiet
 	sleep 10
+	make continue-instance
+
+continue-instance:
 	make update-config
 	make nvidia-smi
 	make forward-ports
@@ -148,17 +189,32 @@ nvidia-smi-fix::
 	make stop-instance
 	make start-instance
 
+
 #############################################################################
 # Ollama 
 #############################################################################
+MODEL=phi3.5
+MODEL=mistral-small
+#MODEL=command-r
+
+stop-ollama: # stop local ollama
+	sudo killall Ollama
 
 install-ollama::
 	${REMOTE} "mkdir -p ollama"
 	${REMOTE} "curl https://ollama.ai/install.sh > ollama/install.sh"
 	${REMOTE} "sh ollama/install.sh"
-	${REMOTE} -t -t "ollama pull mistral"
-	${REMOTE} -t -t "ollama run mistral Say hi and nothing else"
+	${REMOTE} -t -t "ollama pull ${MODEL}"
+	${REMOTE} -t -t "ollama run ${MODEL} Say hi and nothing else"
+
+populate-ollama::
+	${REMOTE} -t -t "ollama pull"
 
 start-ollama:
-	gcloud compute ssh ${USER}@${INSTANCE} --command "ollama list"
+	${REMOTE} -t -t "ollama list"
 
+load-ollama-model:
+	${REMOTE} -t -t "ollama run ${MODEL}"
+
+
+#############################################################################

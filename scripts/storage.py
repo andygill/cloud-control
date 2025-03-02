@@ -11,17 +11,19 @@ def read_gs_path():
         with open(".gstorage", "r") as file:
             return file.read().strip()
     except FileNotFoundError:
-        print("The file '.gstorage' was not found.")
-        return
+        try:
+            # try one level up
+            with open("../.gstorage", "r") as file:
+                return file.read().strip() + "/" + os.path.basename(os.getcwd())
+        except FileNotFoundError:
+            print("The file '.gstorage' was not found in this dir or parent dir.")
+            return
     except Exception as e:
         print(f"An error occurred while reading '.gstorage': {e}")
         return
 
 
-def status():
-    # Read the gs:// path from .gstorage file
-
-    gs_path = read_gs_path()
+def read_remote(gs_path):
     # Run 'gsutil ls -l' command
     try:
         result = subprocess.run(
@@ -47,19 +49,46 @@ def status():
             # Skip the total line
             continue
         parts = line.split()
-        size, _date, url = parts[0], parts[1], " ".join(parts[2:])
-        assert url.startswith(gs_path + "/")
+        if len(parts) >= 3:
+            size, _date, url = parts[0], parts[1], " ".join(parts[2:])
+        elif len(parts) == 1:
+            size = 0
+            url = parts[0]
+        else:
+            assert False, f"parts={parts}"
+
+        assert url.startswith(gs_path + "/"), f"url = {url}, gs_path={gs_path}"
         url = url[len(gs_path) + 1 :]
 
         if url.endswith("/"):
             # It's a directory; skip it
+            for key, value in read_remote(gs_path + "/" + url[:-1]).items():
+                remote[url + key] = value
             continue
         remote[url] = int(size)
 
-    files = os.listdir(os.getcwd())
+    return remote
+
+
+def get_files(dir):
+    files = os.listdir(dir)
     files = [f for f in files if not f.startswith(".")]
     files = [f for f in files if not f.endswith("~")]
-    files = [f for f in files if os.path.isfile(f)]
+
+    for f in files[:]:
+        if os.path.isdir(f):
+            files += [os.path.basename(f) + "/" + g for g in get_files(dir + "/" + f)]
+
+    return [f for f in files if os.path.isfile(dir + "/" + f)]
+
+
+def status():
+    # Read the gs:// path from .gstorage file
+
+    gs_path = read_gs_path()
+    remote = read_remote(gs_path)  #  + "/sdxl")
+
+    files = get_files(os.getcwd())
 
     local = {}
     for f in files:
@@ -70,7 +99,11 @@ def status():
     data = []
     for f in filenames:
         l = local[f] if f in local else None
+        if l == 0:
+            l = None
         r = remote[f] if f in remote else None
+        if r == 0:
+            r = None
         if l is not None and r is not None and l == r:
             data.append(("", "LR", f"{l:,}", f, ""))
         else:

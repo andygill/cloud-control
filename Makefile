@@ -207,6 +207,16 @@ kill-forward-ports::
 
 stop-instance:: kill-forward-ports
 	gcloud compute instances stop ${INSTANCE} --quiet
+	echo consider: make delete-instance, snap-and-delete-instance, list-snapshots, or make create-snapshot
+	echo snapping to ${SAVE_SNAPSHOT}
+
+snap-and-delete-instance::
+	make create-snapshot
+	make list-snapshots
+	make delete-instance
+
+delete-instance:
+	gcloud compute instances delete ${INSTANCE}
 
 start-instance::
 	gcloud compute instances start ${INSTANCE} --quiet

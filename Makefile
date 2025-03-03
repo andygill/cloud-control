@@ -303,9 +303,23 @@ install-fooocus::
 	${REMOTE} "cd ${FOOOCUS}; ${REMOTE_PYTHON} -m venv venv"
 	${REMOTE} "cd ${FOOOCUS}; PYTHONPATH=. ./venv/bin/pip install -r requirements_versions.txt"
 
+
+install-fooocus-api::
+	${REMOTE} "git clone https://github.com/mrhan1993/Fooocus-API.git"
+	${REMOTE} "cd ${FOOOCUS}-API; ${REMOTE_PYTHON} -m venv venv"
+# 	(does not build out of the box)
+	${REMOTE} "cd ${FOOOCUS}-API; PYTHONPATH=. ./venv/bin/pip install colorlog packaging"
+# 	(assuming that foocus has been built)
+	${REMOTE} "cd ${FOOOCUS}-API; mv config.txt config.save.txt ; mv ../${FOOOCUS}/config.txt ."
+
+
 # This installs fooocus weights first time around
 run-fooocus::
 	${REMOTE} -t "cd ${FOOOCUS}; tmux new-session -s fooocus '. ./venv/bin/activate ; python entry_with_update.py ; bash'"
+
+run-fooocus-api::
+	${REMOTE} -t "cd ${FOOOCUS}-API; tmux new-session -s fooocus-api '. ./venv/bin/activate ; python main.py ; bash'"
+
 
 attach-fooocus::
 	${REMOTE} -t tmux attach -t fooocus

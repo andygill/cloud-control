@@ -269,8 +269,26 @@ populate-ollama::
 start-ollama:
 	${REMOTE} -t -t "ollama list"
 
+# serve-ollama:
+# 	${REMOTE} -t "tmux new-session -s ollama 'OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 ollama serve; bash'"
+# #	${REMOTE} -t "tmux new-session -s ollama 'ollama serve; bash'"
+
+
+
+stop-ollama:
+	${REMOTE} -t "sudo systemctl stop ollama"
+
 load-ollama-model:
 	${REMOTE} -t -t "ollama run ${MODEL}"
+
+attach-fooocus::
+	${REMOTE} -t tmux attach -t fooocus
+
+capture-fooocus::
+	${REMOTE} tmux capture-pane -t fooocus -p
+
+kill-fooocus::
+	${REMOTE} tmux kill-session -t fooocus
 
 
 #############################################################################

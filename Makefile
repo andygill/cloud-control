@@ -445,3 +445,46 @@ capture-fluxgym::
 kill-fluxgym::
 	${REMOTE} tmux kill-session -t  ${FLUXGYM}
 
+#############################################################################
+# ComfyUI
+#############################################################################
+
+COMFY_UI=ComfyUI
+
+install-comfyui:: 
+	${REMOTE} "git clone https://github.com/comfyanonymous/ComfyUI.git"
+	${REMOTE} "cd ${COMFY_UI}/custom_nodes ; git clone https://github.com/ltdrdata/ComfyUI-Manager.git"
+	${REMOTE} "cd ${COMFY_UI}/custom_nodes ; git clone https://github.com/webfiltered/DebugNode-ComfyUI.git"
+	# change to 
+	${PYTHON_REMOTE} --pwd ${COMFY_UI} "conda init"
+	#	${REMOTE} "cd ${COMFY_UI}; ${REMOTE_PYTHON} -m venv venv"
+
+	# This was something about sharing models
+	# ${REMOTE} "cd ${COMFY_UI} ; sed 's/path\/to\//..\//' extra_model_paths.yaml.example > extra_model_paths.yaml"
+
+
+
+run-comfyui::
+	${PYTHON_REMOTE} --pwd ${COMFY_UI} "conda activate"
+	${PYTHON_REMOTE} --pwd ${COMFY_UI} --tmux ${COMFY_UI} "python main.py"
+
+connect-comfyui:
+	${REMOTE} "mkdir -p './${COMFY_UI}/models/checkpoints/flux'"
+	${REMOTE} "mkdir -p './${COMFY_UI}/models/checkpoints/sdxl'"
+	${REMOTE} "echo '${GOOGLE_STORAGE}/models/checkpoints' | tee './${COMFY_UI}/models/checkpoints/.gstorage'"
+	${REMOTE} "mkdir -p './${COMFY_UI}/models/loras/flux'"
+	${REMOTE} "mkdir -p './${COMFY_UI}/models/loras/sdxl'"
+	${REMOTE} "echo '${GOOGLE_STORAGE}/models/loras' | tee './${COMFY_UI}/models/loras/.gstorage'"
+	${REMOTE} "echo '${GOOGLE_STORAGE}/models/vae' | tee './${COMFY_UI}/models/vae/.gstorage'"
+	${REMOTE} "echo '${GOOGLE_STORAGE}/models/text_encoder' | tee './${COMFY_UI}/models/text_encoders/.gstorage'"
+	
+
+attach-comfyui::
+	${REMOTE} -t tmux attach -t ${COMFY_UI}
+
+capture-comfyui::
+	${REMOTE} tmux capture-pane -t  ${COMFY_UI} -p
+
+# This kills the tmux shell that contains 
+kill-comfyui::
+	${REMOTE} tmux kill-session -t  ${COMFY_UI}

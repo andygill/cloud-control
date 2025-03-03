@@ -183,10 +183,11 @@ diff:
 ####################################################################################
 
 PORT_SESSION=background-ports
+OLLAMA_PORT=11435:localhost:11434 
 
 forward-ports::
 	tmux new-session -d -s ${PORT_SESSION} \
-		"gcloud compute ssh ${INSTANCE} -- $(foreach item,$(FORWARD_PORTS), -NL $(item):localhost:$(item))"
+		"gcloud compute ssh ${INSTANCE} -- -NL $(OLLAMA_PORT) $(foreach item,$(FORWARD_PORTS), -NL $(item):localhost:$(item))"
 	sleep 3
 	make peek-forward-ports
 

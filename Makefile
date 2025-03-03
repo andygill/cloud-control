@@ -29,6 +29,10 @@ CONDA_BIN=/opt/conda/bin
 REMOTE_PYTHON=${CONDA_BIN}/python3.10
 SET_CONDA_BIN=export PATH="${CONDA_BIN}:$${PATH}"
 
+# use \"Hello World\" to pass a string with spaces
+PYTHON_REMOTE = ${REMOTE} -t ${REMOTE_PYTHON} scripts/remote.py
+
+
 .PHONY: help 
 .PHONY: set-zone
 .PHONY: create-instance start-instance stop-instance

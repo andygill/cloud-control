@@ -416,3 +416,32 @@ kill-forge::
 	${REMOTE} tmux kill-session -t forge
 
 #############################################################################
+# Flux Gym
+#############################################################################
+
+FLUXGYM=fluxgym
+
+install-fluxgym::
+	${REMOTE} "git clone https://github.com/cocktailpeanut/fluxgym.git ${FLUXGYM}"
+	${REMOTE} "cd ${FLUXGYM}; git clone -b sd3 https://github.com/kohya-ss/sd-scripts"
+	${REMOTE} "cd ${FLUXGYM}; ${REMOTE_PYTHON} -m venv venv"
+	${REMOTE} "cd ${FLUXGYM}; . ./venv/bin/activate ; cd sd-scripts ; pip install -r requirements.txt"
+	${REMOTE} "cd ${FLUXGYM}; . ./venv/bin/activate ; pip install -r requirements.txt"
+	${REMOTE} "cd ${FLUXGYM}; . ./venv/bin/activate ; pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121"
+
+
+# This installs it first time around
+run-fluxgym::
+	${REMOTE} -t "cd ${FLUXGYM}; tmux new-session -s ${FLUXGYM} '. ./venv/bin/activate ; python app.py ; bash'"
+
+
+attach-fluxgym::
+	${REMOTE} -t tmux attach -t ${FLUXGYM}
+
+capture-fluxgym::
+	${REMOTE} tmux capture-pane -t  ${FLUXGYM} -p
+
+# This kills the tmux shell that contains 
+kill-fluxgym::
+	${REMOTE} tmux kill-session -t  ${FLUXGYM}
+

@@ -153,18 +153,30 @@ else
 endif
 
 
+
 setup-instance:: # set up instance after creation
 	make update-config
-	sleep 10
+	@echo waiting for 10s or user input.
+	-read -t 10
+	echo Done
 # first time, just ssh in to see if it works
 # remember to say yes to nvidia
 	${REMOTE}
+# Copy the key utilties
+	make copy-scripts
 # now forward the ports
 	make forward-ports
-	scp dot-files/.tmux.conf @${INSTANCE}:
-	${REMOTE} "mkdir scripts"
-	scp scripts/*py @${INSTANCE}:scripts/
 
+copy-scripts::
+	scp dot-files/.tmux.conf @${INSTANCE}:
+	${REMOTE} "mkdir -p scripts"
+	scp scripts/*py @${INSTANCE}:scripts/
+	${REMOTE} "mkdir -p patches"
+	scp patches/*patch @${INSTANCE}:patches/
+
+# can compare local and remote using
+diff:
+	ssh ${REMOTE_USER}@${INSTANCE} "cat ${FILE}" | diff - ${FILE}
 
 ####################################################################################
 # Port forwarding

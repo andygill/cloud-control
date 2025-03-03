@@ -82,7 +82,7 @@ delete-snapshot:: # usage make delete-snapshot SNAPSHOT=...
 
 find-zone:: machine-types.txt
 	@echo "Trying to find a working g2-standard-16 in US ZONE"
-	@ZONES=$$(gcloud compute machine-types list | grep us- | grep g2-standard-16 | awk '{print $$2}' | sort -u | tr '\n' ' '); \
+	@ZONES=$$(cat machine-types.txt | grep us- | grep g2-standard-16 | awk '{print $$2}' | sort -u | tr '\n' ' '); \
 	ZONE_COUNT=$$(echo $$ZONES | wc -w); \
 	echo Found $$ZONE_COUNT candidiate ZONES in US; \
 	for zone in $$ZONES; do \

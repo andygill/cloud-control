@@ -4,6 +4,10 @@ export INSTANCE=instance-${ID}-${COMPUTE}
 export BOOT_DISK_SIZE=200
 export BOOT_DISK_TYPE=pd-balanced
 
+# comment this out to build from scratch
+export BOOT_SNAPSHOT=snapshot-${COMPUTE}-2
+export SAVE_SNAPSHOT=snapshot-${COMPUTE}-3
+
 include .env 
 # (example of .env file)
 #	export ACCOUNT=abc@developer.gserviceaccount.co
@@ -59,7 +63,24 @@ help:: # show help
 list-instances::
 	gcloud compute instances list
 
-find-zone::
+machine-types::
+	gcloud compute machine-types list  --filter="zone:(us-*) AND name:(g2-standard-*)" | tee machine-types.txt
+
+list-snapshots::
+	gcloud compute snapshots list
+
+create-snapshot::
+	gcloud compute snapshots create ${SAVE_SNAPSHOT} \
+	--project=${PROJECT} \
+	--source-disk=${INSTANCE} \
+	--source-disk-zone=${ZONE} \
+	--storage-location=${REGION} \
+
+delete-snapshot:: # usage make delete-snapshot SNAPSHOT=...
+	echo gcloud compute snapshots delete "[snapshot]"
+
+
+find-zone:: machine-types.txt
 	@echo "Trying to find a working g2-standard-16 in US ZONE"
 	@ZONES=$$(gcloud compute machine-types list | grep us- | grep g2-standard-16 | awk '{print $$2}' | sort -u | tr '\n' ' '); \
 	ZONE_COUNT=$$(echo $$ZONES | wc -w); \
@@ -91,11 +112,18 @@ SCOPES = \
 	service.management.readonly \
 	servicecontrol \
 	trace.append
+
+ifdef BOOT_SNAPSHOT
+DISK_SRC := source-snapshot=https://www.googleapis.com/compute/v1/projects/${PROJECT}/global/snapshots/${BOOT_SNAPSHOT}
+else
+DISK_SRC := image=projects/ml-images/global/images/c0-deeplearning-common-gpu-v20240922-debian-11-py310
+endif
+
 DISK_OPTIONS = \
 	auto-delete=yes \
 	boot=yes \
 	device-name=${INSTANCE} \
-	image=projects/ml-images/global/images/c0-deeplearning-common-gpu-v20240922-debian-11-py310 \
+	${DISK_SRC} \
 	mode=rw \
 	size=${BOOT_DISK_SIZE} \
 	type=${BOOT_DISK_TYPE}

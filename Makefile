@@ -371,3 +371,48 @@ kill-kohya::
 
 upload-bucket::
 	scp bucket @${INSTANCE}:bucket
+
+#############################################################################
+# Stable Diffusion WebUI Forge
+#############################################################################
+
+FORGE=forge
+
+install-forge::
+	${REMOTE} "git clone https://github.com/lllyasviel/stable-diffusion-webui-forge.git ${FORGE}"
+	${REMOTE} "cd ${FORGE}; ${REMOTE_PYTHON} -m venv venv"
+	${REMOTE} "cd ${FORGE}; patch webui-user.sh ~/patches/webui-user.patch"
+	${REMOTE} "cd ${FORGE}; . ./venv/bin/activate ; pip install -r requirements_versions.txt"
+
+connect-forge::
+	${REMOTE} "mkdir -p './${FORGE}/models/Stable-diffusion/flux'"
+	${REMOTE} "mkdir -p './${FORGE}/models/Stable-diffusion/sdxl'"
+	${REMOTE} "echo '${GOOGLE_STORAGE}/models/checkpoints' | tee './${FORGE}/models/Stable-diffusion/.gstorage'"
+	${REMOTE} "mkdir -p './${FORGE}/models/Lora/flux'"
+	${REMOTE} "mkdir -p './${FORGE}/models/Lora/sdxl'"
+	${REMOTE} "echo '${GOOGLE_STORAGE}/models/loras' | tee './${FORGE}/models/Lora/.gstorage'"
+	${REMOTE} "echo '${GOOGLE_STORAGE}/models/vae' | tee './${FORGE}/models/VAE/.gstorage'"
+	${REMOTE} "echo '${GOOGLE_STORAGE}/models/text_encoder' | tee './${FORGE}/models/text_encoder/.gstorage'"
+
+populate-forge::
+	${REMOTE} "cd ${FORGE}/models/Stable-diffusion/flux; ${REMOTE_PYTHON} ~/scripts/storage.py pull flux1-dev-fp8.safetensors"
+	${REMOTE} "cd ${FORGE}/models/VAE; ${REMOTE_PYTHON} ~/scripts/storage.py pull ae.safetensors"
+	${REMOTE} "cd ${FORGE}/models/text_encoder; ${REMOTE_PYTHON} ~/scripts/storage.py pull clip_l.safetensors t5xxl_fp8_e4m3fn.safetensors"
+
+# This installs it first time around
+run-forge::
+	# do not activate because webui.sh does this for us
+	${REMOTE} -t "cd ${FORGE}; tmux new-session -s forge '. ; ./webui.sh ; bash'"
+
+
+attach-forge::
+	${REMOTE} -t tmux attach -t forge
+
+capture-forge::
+	${REMOTE} tmux capture-pane -t forge -p
+
+# This kills the tmux shell that contains 
+kill-forge::
+	${REMOTE} tmux kill-session -t forge
+
+#############################################################################

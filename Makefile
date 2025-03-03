@@ -253,7 +253,7 @@ MODEL=phi3.5
 MODEL=mistral-small
 #MODEL=command-r
 
-stop-ollama: # stop local ollama
+stop-local-ollama: # stop local ollama
 	sudo killall Ollama
 
 install-ollama::

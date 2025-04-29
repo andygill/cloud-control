@@ -30,6 +30,7 @@ def main():
         print(f"Tmux Session: {args.tmux}")
         print(f"Remaining Commands: {args.commands}")
 
+    # using double quotes
     formatted_commands = " ".join([f'"{c}"' if " " in c else c for c in args.commands])
 
     if DEBUG:
@@ -39,9 +40,6 @@ def main():
         formatted_commands = (
             f"tmux new-session -s {args.tmux} '{formatted_commands} ; bash'"
         )
-
-    if DEBUG:
-        print(f"Post tmux: {formatted_commands}")
 
     os.execvp("bash", ["bash", "--login", "-i", "-c", formatted_commands])
 

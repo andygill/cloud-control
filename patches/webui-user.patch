@@ -1,0 +1,11 @@
+--- webui-user.sh       2024-01-18 01:33:48.619111224 +0000
++++ webui-user.NEW      2024-01-18 01:32:59.866064118 +0000
+@@ -10,7 +10,7 @@
+ #clone_dir="stable-diffusion-webui"
+ 
+ # Commandline arguments for webui.py, for example: export COMMANDLINE_ARGS="--medvram --opt-split-attention"
+-#export COMMANDLINE_ARGS=""
++export COMMANDLINE_ARGS="--xformers --api"
+ 
+ # python3 executable
+ #python_cmd="python3"

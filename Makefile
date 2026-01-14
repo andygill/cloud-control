@@ -1,12 +1,13 @@
 export COMPUTE=gpu
 export ID=1
 export INSTANCE=instance-${ID}-${COMPUTE}
-export BOOT_DISK_SIZE=200
+export BOOT_DISK_SIZE=300
 export BOOT_DISK_TYPE=pd-balanced
 
 # comment this out to build from scratch
-export BOOT_SNAPSHOT=snapshot-${COMPUTE}-2
-export SAVE_SNAPSHOT=snapshot-${COMPUTE}-3
+# If there is no BOOT_SNAPSHOT, it will build from the standard image
+# export BOOT_SNAPSHOT=snapshot-${COMPUTE}-3
+export SAVE_SNAPSHOT=snapshot-${COMPUTE}-4
 
 include .env 
 # (example of .env file)
@@ -116,7 +117,8 @@ SCOPES = \
 ifdef BOOT_SNAPSHOT
 DISK_SRC := source-snapshot=https://www.googleapis.com/compute/v1/projects/${PROJECT}/global/snapshots/${BOOT_SNAPSHOT}
 else
-DISK_SRC := image=projects/ml-images/global/images/c0-deeplearning-common-gpu-v20240922-debian-11-py310
+# DISK_SRC := image=projects/ml-images/global/images/c0-deeplearning-common-gpu-v20240922-debian-11-py310
+DISK_SRC := image=projects/ml-images/global/images/c0-deeplearning-common-gpu-v20241118-debian-11-py310
 endif
 
 DISK_OPTIONS = \
@@ -128,7 +130,6 @@ DISK_OPTIONS = \
 	size=${BOOT_DISK_SIZE} \
 	type=${BOOT_DISK_TYPE}
 endif
-
 
 create-instance:: # create a remote instance
 ifeq (${COMPUTE}, gpu)
@@ -183,7 +184,7 @@ diff:
 ####################################################################################
 
 PORT_SESSION=background-ports
-OLLAMA_PORT=11435:localhost:11434 
+OLLAMA_PORT=11435:localhost:11434
 
 forward-ports::
 	tmux new-session -d -s ${PORT_SESSION} \
@@ -207,8 +208,8 @@ kill-forward-ports::
 
 stop-instance:: kill-forward-ports
 	gcloud compute instances stop ${INSTANCE} --quiet
-	echo consider: make delete-instance, snap-and-delete-instance, list-snapshots, or make create-snapshot
-	echo snapping to ${SAVE_SNAPSHOT}
+	-echo consider: make delete-instance, snap-and-delete-instance, list-snapshots, or make create-snapshot
+	-echo create-snapshow would snap to ${SAVE_SNAPSHOT}
 
 snap-and-delete-instance::
 	make create-snapshot
@@ -250,8 +251,29 @@ nvidia-smi-fix::
 # Ollama 
 #############################################################################
 MODEL=phi3.5
-MODEL=mistral-small
+
+#22B
+#MODEL=mistral-small
+#35B
 #MODEL=command-r
+#22B
+#MODEL=mistral-small:22b-instruct-2409-q4_K_M
+# 8G
+#MODEL=mistral-nemo:12b-instruct-2407-q4_K_M
+#13B
+#MODEL=mistral-nemo:12b-instruct-2407-q8_0
+#13B
+#MODEL=mistral-nemo:latest
+# 30B A3B
+#MODEL=nemotron-3-nano:latest
+# 14B
+#MODEL=ministral-3:14b
+# 20B
+# MODEL=gpt-oss:20b
+
+# GGUF models from huggingface
+GGUF_MODEL=https://huggingface.co/gghfez/gpt-oss-20b-Derestricted-Q4_K_M-GGUF
+
 
 stop-local-ollama: # stop local ollama
 	sudo killall Ollama
@@ -260,8 +282,18 @@ install-ollama::
 	${REMOTE} "mkdir -p ollama"
 	${REMOTE} "curl https://ollama.ai/install.sh > ollama/install.sh"
 	${REMOTE} "sh ollama/install.sh"
+	make install-model
+
+install-model::
 	${REMOTE} -t -t "ollama pull ${MODEL}"
 	${REMOTE} -t -t "ollama run ${MODEL} Say hi and nothing else"
+	make stop-ollama
+
+install-gguf-model::
+	${REMOTE} "mkdir -p ollama/models/gguf"
+	# L for redirect, O for output filename is same as remote filename
+	${REMOTE} "cd ollama/models/gguf ; curl -LO https://huggingface.co/${GGUF_MODEL}"
+#	${REMOTE} -t -t "ollama list"
 
 populate-ollama::
 	${REMOTE} -t -t "ollama pull"
@@ -269,11 +301,19 @@ populate-ollama::
 start-ollama:
 	${REMOTE} -t -t "ollama list"
 
-# serve-ollama:
-# 	${REMOTE} -t "tmux new-session -s ollama 'OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 ollama serve; bash'"
-# #	${REMOTE} -t "tmux new-session -s ollama 'ollama serve; bash'"
 
 
+OLLAMA_OPTIONS = \
+	OLLAMA_FLASH_ATTENTION=1 \
+	OLLAMA_KV_CACHE_TYPE=q8_0 \
+	OLLAMA_CONTEXT_LENGTH=16000 \
+    OLLAMA_DEBUG=2
+
+X_OLLAMA_OPTIONS = 
+
+serve-ollama:
+	${REMOTE} -t "tmux new-session -s ollama '${OLLAMA_OPTIONS} ollama serve; bash'"
+#	${REMOTE} -t "tmux new-session -s ollama 'ollama serve; bash'"
 
 stop-ollama:
 	${REMOTE} -t "sudo systemctl stop ollama"
@@ -281,14 +321,15 @@ stop-ollama:
 load-ollama-model:
 	${REMOTE} -t -t "ollama run ${MODEL}"
 
-attach-fooocus::
-	${REMOTE} -t tmux attach -t fooocus
+attach-ollama::
+	${REMOTE} -t tmux attach -t ollama
 
-capture-fooocus::
-	${REMOTE} tmux capture-pane -t fooocus -p
+capture-ollama::
+	${REMOTE} tmux capture-pane -t ollama -p
 
-kill-fooocus::
-	${REMOTE} tmux kill-session -t fooocus
+kill-ollama::
+	${REMOTE} tmux kill-session -t ollama
+
 
 
 #############################################################################
@@ -462,8 +503,7 @@ install-comfyui::
 	# This was something about sharing models
 	# ${REMOTE} "cd ${COMFY_UI} ; sed 's/path\/to\//..\//' extra_model_paths.yaml.example > extra_model_paths.yaml"
 
-
-
+# I did conda init already, so this needs to go into the install-comfyui
 run-comfyui::
 	${PYTHON_REMOTE} --pwd ${COMFY_UI} "conda activate"
 	${PYTHON_REMOTE} --pwd ${COMFY_UI} --tmux ${COMFY_UI} "python main.py"
@@ -477,7 +517,6 @@ connect-comfyui:
 	${REMOTE} "echo '${GOOGLE_STORAGE}/models/loras' | tee './${COMFY_UI}/models/loras/.gstorage'"
 	${REMOTE} "echo '${GOOGLE_STORAGE}/models/vae' | tee './${COMFY_UI}/models/vae/.gstorage'"
 	${REMOTE} "echo '${GOOGLE_STORAGE}/models/text_encoder' | tee './${COMFY_UI}/models/text_encoders/.gstorage'"
-	
 
 attach-comfyui::
 	${REMOTE} -t tmux attach -t ${COMFY_UI}
